@@ -130,7 +130,7 @@ def affix_subroutine(files, affix_type):
     userinput = takeinput(ADDITION_TYPE_MENU)
     while not userinput.isnumeric() or int(userinput) not in [1, 2, 3]:
         userinput = takeinput("")
-    if int(userinput) == 3:
+    if int(userinput) == 2:
         custom_affix = input("Please enter the custom affix\n")
         filename_dict = {
             filename: ".".join(filename.split(".")[:-1])
