@@ -1,9 +1,12 @@
+import locale
 import os
 import re
 import shutil
 from datetime import date as d
 from datetime import datetime as dt
 from datetime import timedelta as td
+
+locale.setlocale(locale.LC_COLLATE, "")
 
 TOPLEVEL_MENU = """What operation would you like to perform?
 \t(0) Change directory
@@ -43,6 +46,17 @@ DATE_SUFF_PRE_MENU = """Suffix or prefix?
 \t(2) Prefix\n"""
 
 
+def natural_key(s):
+    parts = re.split(r"(\d+)", s)
+    key = []
+    for part in parts:
+        if part.isdigit():
+            key.append(int(part))
+        else:
+            key.append(locale.strxfrm(part.casefold()))
+    return key
+
+
 def checkquit(userinput):
     if userinput == "quit":
         quit()
@@ -70,7 +84,8 @@ def fileselect_subset_subroutine():
             file
             for file in os.listdir()
             if os.path.isfile(file) and not file.startswith(".")
-        ]
+        ],
+        key=natural_key,
     )
     if int(userinput) in [1, 2]:
         numfiles = takeinput("How many?\n")
@@ -104,7 +119,8 @@ def fileselect_subroutine():
                 file
                 for file in os.listdir()
                 if os.path.isfile(file) and not file.startswith(".")
-            ]
+            ],
+            key=natural_key,
         )
         print("Files to be renamed:\n\t" + "\n\t".join(files))
         correct = takeinput("Does this look correct? (y/n)\n")
@@ -132,13 +148,19 @@ def affix_subroutine(files, affix_type):
         userinput = takeinput("")
     if int(userinput) == 2:
         custom_affix = input("Please enter the custom affix\n")
-        filename_dict = {
-            filename: ".".join(filename.split(".")[:-1])
-            + custom_affix
-            + filename.split(".")[-1]
-            for filename in files
-        }
-        return filename_dict
+        newfilenames = []
+        for _ in range(len(files)):
+            if affix_type == "suffix":
+                newfilename = (
+                    ".".join(files[_].split(".")[:-1])
+                    + custom_affix
+                    + "."
+                    + files[_].split(".")[-1]
+                )
+            elif affix_type == "prefix":
+                newfilename = custom_affix + files[_]
+            newfilenames.append(newfilename)
+        return zip(files, newfilenames)
     if int(userinput) == 1:
         userinput2 = takeinput(INC_MENU)
         while not userinput2.isnumeric() or int(userinput2) not in [1, 2]:
@@ -171,6 +193,7 @@ def affix_subroutine(files, affix_type):
                     newfilename = (
                         ".".join(files[_].split(".")[:-1])
                         + append_str
+                        + "."
                         + files[_].split(".")[-1]
                     )
                 elif affix_type == "prefix":
@@ -193,6 +216,7 @@ def affix_subroutine(files, affix_type):
                     newfilename = (
                         ".".join(files[_].split(".")[:-1])
                         + writedate
+                        + "."
                         + files[_].split(".")[-1]
                     )
                 elif affix_type == "prefix":
@@ -215,7 +239,7 @@ def replacement_subroutine(files):
     )
     replacement = input("Type the string you would like to replace with\n")
     extensions = [file.split(".")[-1] for file in files]
-    names = [file.split(".")[:-1] for file in files]
+    names = [".".join(file.split(".")[:-1]) for file in files]
 
     if to_replace.startswith(":re:"):
         re_to_replace = to_replace[4:]
@@ -288,6 +312,7 @@ def rename(filezip):
     print("Renaming files...")
     for old_name, new_name in fileziplist:
         os.rename(old_name, new_name)
+    os.chdir("..")
 
 
 def main():
