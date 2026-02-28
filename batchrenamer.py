@@ -6,6 +6,8 @@ from datetime import date as d
 from datetime import datetime as dt
 from datetime import timedelta as td
 
+from tqdm import tqdm
+
 locale.setlocale(locale.LC_COLLATE, "")
 
 TOPLEVEL_MENU = """What operation would you like to perform?
@@ -59,7 +61,7 @@ def natural_key(s):
 
 def checkquit(userinput):
     if userinput == "quit":
-        quit()
+        raise KeyboardInterrupt
 
 
 def takeinput(message):
@@ -69,10 +71,15 @@ def takeinput(message):
 
 
 def dirchange_subroutine():
-    newdir = input("Please enter the new directory\n")
-    newdir = newdir.replace("'", "")
-    newdir = newdir.replace('"', "")
-    os.chdir(newdir)
+    while True:
+        newdir = input("Please enter the new directory\n")
+        newdir = newdir.replace("'", "")
+        newdir = newdir.replace('"', "")
+        try:
+            os.chdir(newdir)
+            break
+        except FileNotFoundError:
+            print(f"Directory {newdir} not found.")
 
 
 def fileselect_subset_subroutine():
@@ -202,7 +209,7 @@ def affix_subroutine(files, affix_type):
             return zip(files, newfilenames)
         if int(userinput2) == 2:
             dating_params = input(
-                "Please enter the start date in format YYYY-MM-DD and then a space and the step in number of days,\nand then a space and the output format using the format codes here: https://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior\n"
+                "Please enter the start date in format YYYY-MM-DD and then a space and the step in number of days,\nand then a space and the output format using the format codes here:\nhttps://docs.python.org/3/library/datetime.html#strftime-and-strptime-behavior\n"
             )
             start_date = dating_params.split()[0]
             start_date = dt.strptime(start_date, "%Y-%m-%d")
@@ -303,14 +310,16 @@ def rename(filezip):
         print(f"Creating Directory {newdirname}")
         os.mkdir(newdirname)
         to_copy = [t[0] for t in fileziplist]
-        print(f"Copying files to {newdirname}")
-        for file in to_copy:
+        for file in tqdm(
+            to_copy, total=len(to_copy), desc=f"Copying files to {newdirname}"
+        ):
             src = herepath + f"/{file}"
             dst = herepath + f"/{newdirname}/{file}"
             shutil.copy2(src, dst)
         os.chdir(newdirname)
-    print("Renaming files...")
-    for old_name, new_name in fileziplist:
+    for old_name, new_name in tqdm(
+        fileziplist, total=len(fileziplist), desc="Renaming files"
+    ):
         os.rename(old_name, new_name)
     os.chdir("..")
 
@@ -319,32 +328,35 @@ def main():
     curdir = os.getcwd()
     print(f"Current Directory: {curdir}")
     while True:
-        if os.getcwd() != curdir:
-            curdir = os.getcwd()
-            print(f"Current Directory: {curdir}")
-        firstchoice = takeinput(TOPLEVEL_MENU)
-        if not firstchoice.isnumeric() or int(firstchoice) not in [0, 1, 2, 3, 4]:
-            print("Please enter either 0, 1, 2, 3, or 4")
-            continue
-        files = None
-        if int(firstchoice) == 0:
-            dirchange_subroutine()
-        else:
-            files = fileselect_subroutine()
-        if not files:
-            continue
-        filezip = None
-        if int(firstchoice) == 1:
-            filezip = suffix_subroutine(files)
-        if int(firstchoice) == 2:
-            filezip = prefix_subroutine(files)
-        if int(firstchoice) == 3:
-            filezip = replacement_subroutine(files)
-        if int(firstchoice) == 4:
-            filezip = dating_subroutine(files)
-        if not filezip:
-            continue
-        rename(filezip)
+        try:
+            if os.getcwd() != curdir:
+                curdir = os.getcwd()
+                print(f"Current Directory: {curdir}")
+            firstchoice = takeinput(TOPLEVEL_MENU)
+            if not firstchoice.isnumeric() or int(firstchoice) not in [0, 1, 2, 3, 4]:
+                print("Please enter either 0, 1, 2, 3, or 4")
+                continue
+            files = None
+            if int(firstchoice) == 0:
+                dirchange_subroutine()
+            else:
+                files = fileselect_subroutine()
+            if not files:
+                continue
+            filezip = None
+            if int(firstchoice) == 1:
+                filezip = suffix_subroutine(files)
+            if int(firstchoice) == 2:
+                filezip = prefix_subroutine(files)
+            if int(firstchoice) == 3:
+                filezip = replacement_subroutine(files)
+            if int(firstchoice) == 4:
+                filezip = dating_subroutine(files)
+            if not filezip:
+                continue
+            rename(filezip)
+        except KeyboardInterrupt:
+            break
 
 
 if __name__ == "__main__":
